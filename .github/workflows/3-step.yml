@@ -126,8 +126,32 @@ jobs:
           file: exercise-toolkit/markdown-templates/step-feedback/watching-for-progress.md
 
       - name: Disable current workflow and enable next one
-        run: |
-          gh workflow disable "${{github.workflow}}"
-          gh workflow enable "Step 4"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+
+            const { data } = await github.rest.actions.listRepoWorkflows({
+              owner,
+              repo,
+            });
+
+            const step4 = data.workflows.find(
+              (workflow) => workflow.path === ".github/workflows/4-step.yml"
+            );
+
+            if (!step4) {
+              throw new Error("Could not find .github/workflows/4-step.yml");
+            }
+
+            await github.rest.actions.disableWorkflow({
+              owner,
+              repo,
+              workflow_id: context.workflow,
+            });
+
+            await github.rest.actions.enableWorkflow({
+              owner,
+              repo,
+              workflow_id: step4.id,
+            });
